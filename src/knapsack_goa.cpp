@@ -14,7 +14,7 @@ struct Goat {
 
 // ===================== THAM SỐ GOA =====================
 int N = 30;           // số dê
-int Tmax = 300;       // vòng lặp tối đa
+int Tmax = 2000;       // vòng lặp tối đa
 double alpha = 0.05;  // hệ số khám phá
 double b_factor = 0.5;// hệ số khai thác
 double J = 0.1;       // xác suất nhảy
@@ -75,12 +75,15 @@ vector<Goat> initPopulation() {
 
 
 // ===================== THUẬT TOÁN GOA =====================
-Goat GOA_Knapsack() {
+Goat GOA_Knapsack(ofstream &fout) {
     srand(time(0));
     vector<Goat> goats = initPopulation();
 
     Goat best = *max_element(goats.begin(), goats.end(),
         [](const Goat &a, const Goat &b){ return a.fitness < b.fitness; });
+
+    int stagnation_count = 0;
+    double last_best_fitness = best.fitness;
 
     for (int t = 0; t < Tmax; t++) {
 
@@ -122,8 +125,24 @@ Goat GOA_Knapsack() {
 
         Goat cur_best = *max_element(goats.begin(), goats.end(),
             [](const Goat &a, const Goat &b){ return a.fitness < b.fitness; });
-        if (cur_best.fitness > best.fitness)
+        if (cur_best.fitness > best.fitness) {
             best = cur_best;
+        }
+
+        // Cập nhật stagnation count
+        if (best.fitness > last_best_fitness) {
+            last_best_fitness = best.fitness;
+            stagnation_count = 0; // Reset vì tìm thấy cái mới ngon hơn
+        } else {
+            stagnation_count++;   // Tăng lên vì vẫn y nguyên
+        }
+
+        fout << "Generation " << t + 1 << ": Best Fitness = " << best.fitness << endl;
+
+        // Kiểm tra điều kiện dừng
+        if (stagnation_count >= 200) {
+            break;
+        }
     }
 
     return best;
@@ -136,9 +155,9 @@ int main() {
     srand((unsigned)time(0));
 
     // === ĐỌC DỮ LIỆU TỪ FILE ===
-    ifstream fin("input_knapsack.txt");
+    ifstream fin("../data/input_knapsack.txt");
     if (!fin.is_open()) {
-        cerr << "Không thể mở file input_knapsack.txt\n";
+        cerr << "Khong the mo file input_knapsack.txt\n";
         return 1;
     }
 
@@ -148,10 +167,16 @@ int main() {
         fin >> items[i].weight >> items[i].value;
     fin.close();
 
-    cout << "Đọc dữ liệu thành công! (" << n_items << " vật phẩm, W = " << W << ")\n";
+    cout << "Doc du lieu thanh cong! (" << n_items << " vat pham, W = " << W << ")\n";
 
+    //  TẠO FILE OUTPUT 
+    ofstream fout("../data/output_result_goa.txt");
+    if (!fout.is_open()) {
+        cerr << " Khong the tao file output_result_goa.txt!\n";
+        return 1;
+    }
     // === Chạy GOA ===
-    Goat result = GOA_Knapsack();
+    Goat result = GOA_Knapsack(fout);
 
     // === Tính trọng lượng thực tế ===
     int total_weight = 0;
@@ -159,12 +184,28 @@ int main() {
         if (result.bin[i]) total_weight += items[i].weight;
 
     // === In kết quả ===
-    cout << "Giá trị tối ưu: " << result.fitness << "\n";
-    cout << "Tổng trọng lượng: " << total_weight << " / " << W << "\n";
-    /*cout << "Vật phẩm được chọn: ";
-    for (int i = 0; i < n_items; i++)
-        if (result.bin[i]) cout << i + 1 << " ";
-    cout << "\n";
-    */
+    fout << "----------------------------------------" << endl;
+    fout << "TONG KET (GOA Algorithm):" << endl;
+    fout << "Tong so the he (Generations): " << Tmax << endl;
+    fout << "Gia tri toi uu (Best Value): " << result.fitness << endl;
+    fout << "Tong trong luong: " << total_weight << " / " << W << endl;
+    
+    fout << "Danh sach vat pham duoc chon (Index): ";
+    for (int i = 0; i < n_items; i++) {
+        if (result.bin[i]) {
+            fout << (i + 1) << " ";
+        }
+    }
+    fout << endl;
+
+    // Đóng file
+    fout.close();
+
+    // === 6. IN RA MÀN HÌNH ĐỂ BÁO CÁO ===
+    cout << "----------------------------------------\n";
+    cout << "Da chay xong! Kiem tra file 'output_result_goa.txt'.\n";
+    cout << "Gia tri toi uu: " << result.fitness << "\n";
+    cout << "Tong trong luong: " << total_weight << " / " << W << "\n";
+
     return 0;
 }
